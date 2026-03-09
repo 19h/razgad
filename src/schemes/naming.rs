@@ -1,4 +1,4 @@
-use crate::{Confidence, Name, Scheme, Symbol, SymbolKind};
+use crate::{function_names, text, Confidence, Name, Scheme, Signature, Symbol, SymbolKind, Type};
 
 pub fn decode(scheme: Scheme, input: &str) -> Option<Symbol> {
     match scheme {
@@ -13,7 +13,7 @@ pub fn decode(scheme: Scheme, input: &str) -> Option<Symbol> {
         Scheme::Zig => decode_zig(input),
         Scheme::Nim => decode_nim(input),
         Scheme::PascalDelphi => decode_pascal_delphi(input),
-        Scheme::Modula => Some(simple(
+        Scheme::Modula => Some(dotted_function(
             scheme,
             SymbolKind::Function,
             &input.replace('_', "."),
@@ -129,7 +129,7 @@ fn decode_ada(input: &str) -> Option<Symbol> {
             input,
         ));
     }
-    Some(simple(
+    Some(dotted_function(
         Scheme::AdaGnat,
         SymbolKind::Function,
         &input.replace("__", "."),
@@ -151,7 +151,7 @@ fn decode_gfortran_module(input: &str) -> Option<Symbol> {
 fn decode_ocaml(input: &str) -> Option<Symbol> {
     let body = input.strip_prefix("caml")?;
     if let Some(body) = body.strip_prefix('_') {
-        return Some(simple(
+        return Some(dotted_function(
             Scheme::Ocaml,
             SymbolKind::Function,
             &format!("caml.{body}"),
@@ -165,7 +165,7 @@ fn decode_ocaml(input: &str) -> Option<Symbol> {
     } else {
         SymbolKind::Function
     };
-    Some(simple(
+    Some(dotted_function(
         scheme_for(kind),
         kind,
         &format!("{module}.{function}"),
@@ -179,7 +179,7 @@ fn decode_go(input: &str) -> Option<Symbol> {
     } else {
         SymbolKind::Function
     };
-    Some(simple(Scheme::Go, kind, input, input))
+    Some(dotted_function(Scheme::Go, kind, input, input))
 }
 
 fn decode_zig(input: &str) -> Option<Symbol> {
@@ -211,7 +211,7 @@ fn decode_pascal_delphi(input: &str) -> Option<Symbol> {
         let params = parts.next().unwrap_or_default();
         let param_display = if params.ends_with('i') { "int" } else { "" };
         let path = scopes.join(".");
-        return Some(simple(
+        return Some(dotted_function(
             Scheme::PascalDelphi,
             SymbolKind::Function,
             &format!("{path}({param_display})").replace("()", "()"),
@@ -223,7 +223,7 @@ fn decode_pascal_delphi(input: &str) -> Option<Symbol> {
         let (unit, remainder) = rest.split_once("_$$_")?;
         let mut parts = remainder.split('$').filter(|part| !part.is_empty());
         if let Some(name) = parts.next() {
-            return Some(simple(
+            return Some(dotted_function(
                 Scheme::PascalDelphi,
                 SymbolKind::Function,
                 &format!("{}.{}(longint)", title_case(unit), title_case(name)),
@@ -257,6 +257,57 @@ fn simple(scheme: Scheme, kind: SymbolKind, display: &str, input: &str) -> Symbo
     Symbol::new(scheme, kind)
         .with_display(display)
         .with_verbatim(input)
+}
+
+fn dotted_function(scheme: Scheme, kind: SymbolKind, display: &str, input: &str) -> Symbol {
+    let mut symbol = simple(scheme, kind, display, input);
+    enrich_from_dotted_display(&mut symbol, display);
+    symbol
+}
+
+fn enrich_from_dotted_display(symbol: &mut Symbol, display: &str) {
+    let Some(parsed) = function_names::parse_function_name_with_separator(display, ".") else {
+        return;
+    };
+
+    if let Some(callable) = parsed.callable_name.as_deref() {
+        symbol.path = if callable.contains('.') {
+            parsed
+                .callable_path
+                .iter()
+                .map(|part| text::parse_name(part, "."))
+                .collect()
+        } else {
+            vec![text::parse_name(callable, ".")]
+        };
+    }
+
+    if parsed.has_signature() {
+        symbol.signature = Some(Signature {
+            calling_convention: parsed
+                .calling_convention
+                .as_deref()
+                .and_then(function_names::parse_calling_convention_token),
+            parameters: parsed
+                .arguments
+                .iter()
+                .map(|arg| parse_function_type(&arg.type_text))
+                .collect(),
+            return_type: parsed
+                .return_type
+                .as_deref()
+                .map(|ty| text::parse_type(ty, ".")),
+        });
+    }
+}
+
+fn parse_function_type(input: &str) -> Type {
+    let trimmed = input.trim();
+    if trimmed == "..." {
+        Type::Other("...".to_string())
+    } else {
+        text::parse_type(trimmed, ".")
+    }
 }
 
 fn scheme_for(_kind: SymbolKind) -> Scheme {

@@ -1,4 +1,4 @@
-use crate::{Confidence, DetectedSymbol, Error, Scheme, decode, schemes};
+use crate::{decode, schemes, Confidence, DetectedSymbol, Error, Scheme};
 
 pub fn heuristic_decode_symbol(input: &str) -> Result<DetectedSymbol, Error> {
     let (scheme, confidence) = detect_scheme(input)?;

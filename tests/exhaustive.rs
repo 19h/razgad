@@ -1,4 +1,4 @@
-use symdem::{decode, encode, heuristic_decode, Confidence, Scheme, SymbolKind};
+use razgad::{Confidence, Scheme, SymbolKind, decode, encode, heuristic_decode};
 
 #[derive(Clone, Copy)]
 struct Case {

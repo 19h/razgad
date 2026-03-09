@@ -37,3 +37,5 @@ Desktop.ini
 *.pdb
 node_modules/
 target/
+
+function_names.txt

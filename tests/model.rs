@@ -1,6 +1,6 @@
-use symdem::{
-    CallingConvention, Confidence, Name, PlatformDecorations, Scheme, SpecialKind, Symbol,
-    SymbolKind, Type, decode, encode, heuristic_decode,
+use razgad::{
+    decode, encode, heuristic_decode, CallingConvention, Confidence, Name, PlatformDecorations,
+    Scheme, SpecialKind, Symbol, SymbolKind, Type,
 };
 
 #[test]
@@ -30,6 +30,108 @@ fn msvc_metadata_and_tables_fit_the_same_symbol_tree() {
     assert_eq!(rtti.kind, SymbolKind::Metadata);
     assert_eq!(rtti.special, Some(SpecialKind::RttiTypeDescriptor));
     assert_eq!(rtti.display(), "RTTI Type Descriptor for demo::Widget");
+}
+
+#[test]
+fn msvc_decode_uses_broad_function_name_parser_for_signature_details() {
+    let symbol = decode(Scheme::MicrosoftCpp, "?alpha@demo@@YAXH@Z").unwrap();
+
+    assert_eq!(symbol.kind, SymbolKind::Function);
+    let signature = symbol.signature.as_ref().expect("signature");
+    assert_eq!(signature.calling_convention, Some(CallingConvention::Cdecl));
+    assert_eq!(signature.return_type, Some(Type::void()));
+    assert_eq!(signature.parameters, vec![Type::int()]);
+}
+
+#[test]
+fn swift_decode_uses_generic_function_name_parser_for_signature_details() {
+    let symbol = decode(Scheme::Swift, "_$s4Demo6WidgetV3runyS2iF").unwrap();
+
+    assert_eq!(symbol.kind, SymbolKind::Method);
+    assert_eq!(symbol.path.len(), 3);
+    assert_eq!(symbol.path[0], Name::identifier("Demo"));
+    assert_eq!(symbol.path[1], Name::identifier("Widget"));
+    assert_eq!(symbol.path[2], Name::identifier("run"));
+
+    let signature = symbol.signature.as_ref().expect("signature");
+    assert_eq!(signature.return_type, None);
+    assert_eq!(signature.parameters, vec![Type::int()]);
+}
+
+#[test]
+fn dotted_naming_schemes_pick_up_generic_parser_structure() {
+    let pascal = decode(Scheme::PascalDelphi, "@Unit1@Foo$qqri").unwrap();
+    let ada = decode(Scheme::AdaGnat, "ada__text_io__put_line").unwrap();
+    let modula = decode(Scheme::Modula, "Storage_open").unwrap();
+
+    assert_eq!(
+        pascal.path,
+        vec![Name::identifier("Unit1"), Name::identifier("Foo")]
+    );
+    let signature = pascal.signature.as_ref().expect("signature");
+    assert_eq!(signature.parameters, vec![Type::int()]);
+
+    assert_eq!(
+        ada.path,
+        vec![
+            Name::identifier("ada"),
+            Name::identifier("text_io"),
+            Name::identifier("put_line"),
+        ]
+    );
+
+    assert_eq!(
+        modula.path,
+        vec![Name::identifier("Storage"), Name::identifier("open")]
+    );
+}
+
+#[test]
+fn go_decode_projects_receiver_methods_into_structured_paths() {
+    let symbol = decode(Scheme::Go, "main.(*T).Method").unwrap();
+
+    assert_eq!(symbol.kind, SymbolKind::Method);
+    assert_eq!(
+        symbol.path,
+        vec![
+            Name::identifier("main"),
+            Name::identifier("(*T)"),
+            Name::identifier("Method"),
+        ]
+    );
+    assert!(symbol.signature.is_none());
+}
+
+#[test]
+fn objective_c_runtime_wrappers_keep_target_method_structure() {
+    let block = decode(
+        Scheme::ObjectiveC,
+        "___51-[VUIBackgroundMediaController loadAlphaImageProxy]_block_invoke_2",
+    )
+    .unwrap();
+    let cold = decode(
+        Scheme::ObjectiveC,
+        "-[NSViewServiceMarshal _bootstrap:replyData:completion:].cold.3",
+    )
+    .unwrap();
+
+    assert_eq!(block.kind, SymbolKind::Runtime);
+    assert_eq!(
+        block.path,
+        vec![
+            Name::identifier("VUIBackgroundMediaController"),
+            Name::identifier("loadAlphaImageProxy"),
+        ]
+    );
+
+    assert_eq!(cold.kind, SymbolKind::Runtime);
+    assert_eq!(
+        cold.path,
+        vec![
+            Name::identifier("NSViewServiceMarshal"),
+            Name::identifier("_bootstrap:replyData:completion:"),
+        ]
+    );
 }
 
 #[test]

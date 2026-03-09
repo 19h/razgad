@@ -48,6 +48,8 @@ pub fn decode(scheme: Scheme, input: &str) -> Option<Symbol> {
                 &display,
                 "::",
             );
+            text::enrich_symbol_from_function_name(&mut symbol, &full, "::");
+            symbol.display = Some(display);
             symbol.concrete_family = Scheme::MicrosoftCpp;
             return Some(symbol.with_verbatim(input));
         }

@@ -1,4 +1,4 @@
-use crate::{Confidence, Scheme, Symbol, SymbolKind, text};
+use crate::{text, Confidence, Scheme, Symbol, SymbolKind};
 
 pub fn decode(scheme: Scheme, input: &str) -> Option<Symbol> {
     let demangled = swift_demangle::demangle(input)

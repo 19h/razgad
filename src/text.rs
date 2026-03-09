@@ -1,4 +1,4 @@
-use crate::{Name, Symbol, SymbolKind, Type};
+use crate::{function_names, Name, Symbol, SymbolKind, Type};
 
 pub fn split_qualified(input: &str, separator: &str) -> Vec<String> {
     let mut parts = Vec::new();
@@ -76,6 +76,11 @@ pub fn symbol_from_demangled_cpp(
         return symbol.with_display(display);
     }
 
+    enrich_symbol_from_function_name(&mut symbol, display, path_separator);
+    if !symbol.path.is_empty() {
+        return symbol.with_display(display);
+    }
+
     symbol.kind = classify_member_kind(&parse_names(display, path_separator));
     symbol.path = parse_names(display, path_separator);
     symbol.with_display(display)
@@ -86,9 +91,57 @@ pub fn symbol_from_qualified_display(
     display: &str,
     path_separator: &str,
 ) -> Symbol {
+    enrich_symbol_from_function_name(&mut symbol, display, path_separator);
+    if !symbol.path.is_empty() {
+        return symbol.with_display(display);
+    }
     symbol.path = parse_names(display, path_separator);
     symbol.kind = classify_member_kind(&symbol.path);
     symbol.with_display(display)
+}
+
+pub fn enrich_symbol_from_function_name(
+    symbol: &mut Symbol,
+    declaration: &str,
+    path_separator: &str,
+) {
+    let Some(parsed) =
+        function_names::parse_function_name_with_separator(declaration, path_separator)
+    else {
+        return;
+    };
+
+    if let Some(callable) = parsed.callable_name.as_deref() {
+        let names = if callable.contains(path_separator) {
+            parsed
+                .callable_path
+                .iter()
+                .map(|part| parse_name(part, path_separator))
+                .collect::<Vec<_>>()
+        } else {
+            vec![parse_name(callable, path_separator)]
+        };
+        symbol.kind = classify_member_kind(&names);
+        symbol.path = names;
+    }
+
+    if parsed.has_signature() {
+        symbol.signature = Some(crate::Signature {
+            calling_convention: parsed
+                .calling_convention
+                .as_deref()
+                .and_then(function_names::parse_calling_convention_token),
+            parameters: parsed
+                .arguments
+                .iter()
+                .map(|arg| parse_function_type(&arg.type_text, path_separator))
+                .collect(),
+            return_type: parsed
+                .return_type
+                .as_deref()
+                .map(|ty| parse_function_type(ty, path_separator)),
+        });
+    }
 }
 
 pub fn parse_names(input: &str, separator: &str) -> Vec<Name> {
@@ -124,8 +177,25 @@ pub fn parse_type(input: &str, separator: &str) -> Type {
             let inner = trimmed.trim_end_matches(" const&");
             Type::const_ref(parse_type(inner, separator))
         }
-        _ if trimmed.contains(separator) => Type::named(split_qualified(trimmed, separator)),
+        _ if trimmed.contains(separator) && is_plain_named_type(trimmed) => {
+            Type::named(split_qualified(trimmed, separator))
+        }
         _ => Type::Other(trimmed.to_string()),
+    }
+}
+
+fn is_plain_named_type(input: &str) -> bool {
+    !input
+        .chars()
+        .any(|ch| ch.is_whitespace() || matches!(ch, '(' | ')' | '[' | ']' | '{' | '}' | '*' | '&'))
+}
+
+fn parse_function_type(input: &str, separator: &str) -> Type {
+    let trimmed = input.trim();
+    if trimmed == "..." {
+        Type::Other("...".to_string())
+    } else {
+        parse_type(trimmed, separator)
     }
 }
 

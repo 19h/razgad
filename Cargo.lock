@@ -40,6 +40,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "razgad"
+version = "0.1.0"
+dependencies = [
+ "cpp_demangle",
+ "msvc-demangler",
+ "rustc-demangle",
+ "swift-demangle",
+]
+
+[[package]]
 name = "rustc-demangle"
 version = "0.1.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -50,13 +60,3 @@ name = "swift-demangle"
 version = "0.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "821c4d169ba8906dd34a61e5310ff9fac7337f30a539715a7cb0d7caab0fa205"
-
-[[package]]
-name = "symdem"
-version = "0.1.0"
-dependencies = [
- "cpp_demangle",
- "msvc-demangler",
- "rustc-demangle",
- "swift-demangle",
-]
