@@ -1,0 +1,10 @@
+[package]
+name = "symdem"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+cpp_demangle = "0.5.1"
+msvc-demangler = "0.11.0"
+rustc-demangle = "0.1.27"
+swift-demangle = "0.0.2"
