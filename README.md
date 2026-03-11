@@ -4,7 +4,7 @@
 </p>
 
 <p align="center">
-  <code>crate: razgad</code> &middot; <code>Rust 2024</code> &middot; <code>50 public schemes</code> &middot; <code>heuristic detection</code> &middot; <code>decode + re-encode</code> &middot; <code>signature parsing</code>
+  <code>50 public schemes</code> &middot; <code>heuristic detection</code> &middot; <code>decode + re-encode</code> &middot; <code>signature parsing</code>
 </p>
 
 ---
