@@ -59,6 +59,29 @@ fn swift_decode_uses_generic_function_name_parser_for_signature_details() {
 }
 
 #[test]
+fn swift_decode_handles_specialization_and_objc_wrappers_without_runtime_linking() {
+    let specialization = decode(
+        Scheme::Swift,
+        "_$ss22_ContiguousArrayBufferV20_consumeAndCreateNew14bufferIsUnique15minimumCapacity13growForAppendAByxGSb_SiSbtF7Runtime18BacktraceFormatterV8TableRowO_Tg5",
+    )
+    .unwrap();
+    let objc = decode(
+        Scheme::Swift,
+        "_$s7SwiftUI23SheetPresentationWindow33_7B5508BFB2B0CAF1E28E206F2014E66BLLC03endC0yySo8NSWindowCFTo",
+    )
+    .unwrap();
+
+    assert_eq!(
+        specialization.display(),
+        "generic specialization <Runtime.BacktraceFormatter.TableRow> of Swift._ContiguousArrayBuffer._consumeAndCreateNew(bufferIsUnique: Swift.Bool, minimumCapacity: Swift.Int, growForAppend: Swift.Bool)"
+    );
+    assert_eq!(
+        objc.display(),
+        "@objc SwiftUI.(SheetPresentationWindow in _7B5508BFB2B0CAF1E28E206F2014E66B).endSheet(__C.NSWindow)"
+    );
+}
+
+#[test]
 fn dotted_naming_schemes_pick_up_generic_parser_structure() {
     let pascal = decode(Scheme::PascalDelphi, "@Unit1@Foo$qqri").unwrap();
     let ada = decode(Scheme::AdaGnat, "ada__text_io__put_line").unwrap();

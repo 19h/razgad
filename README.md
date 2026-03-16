@@ -262,7 +262,7 @@ For high-confidence families, razgad leans on battle-tested ecosystem crates whe
 - `cpp_demangle` for Itanium-family parsing
 - `msvc-demangler` for Microsoft C++
 - `rustc-demangle` for Rust forms
-- `swift-demangle` for Swift
+- an in-tree pure-Rust Swift demangler derived from Swift's demangling sources
 
 The important part is what happens after that: vendor-specific outputs are normalized into one common model instead of being left as unrelated display strings.
 

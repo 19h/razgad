@@ -1,13 +1,15 @@
 [package]
 name = "razgad"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 description = "A library for decoding, classifying, normalizing, and re-emitting mangled, decorated, and runtime symbol names across a wide spread of compiler, platform, and language ecosystems."
 readme = "README.md"
 license = "MIT"
 
 [dependencies]
-cpp_demangle = "0.5.1"
-msvc-demangler = "0.11.0"
-rustc-demangle = "0.1.27"
-swift-demangle = "0.0.2"
+cpp_demangle = "^0.5"
+msvc-demangler = "^0.11"
+rustc-demangle = "^0.1"
+
+[build-dependencies]
+cc = "1"

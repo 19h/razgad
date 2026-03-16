@@ -6,6 +6,7 @@ mod function_names;
 mod heuristics;
 mod model;
 mod schemes;
+mod swift_demangle;
 mod text;
 
 pub use crate::error::Error;
